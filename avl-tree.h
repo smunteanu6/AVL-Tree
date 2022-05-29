@@ -1,5 +1,8 @@
 
-
+/*
+  MIT License
+  Copyright (c) 2022 Ștefan Munteanu
+*/
 
 #include <bits/stl_algobase.h>
 
