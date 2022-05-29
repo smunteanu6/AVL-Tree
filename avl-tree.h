@@ -5,6 +5,7 @@
 */
 
 #include <bits/stl_algobase.h>
+#include <cstddef>
 
 template<class T> class avl {
   
@@ -26,8 +27,8 @@ template<class T> class avl {
       Node* p = right;
       right = p->left;
       p->left = this;
-      height = max(left->getHeight(), right->getHeight()) + 1;
-      p->height = max(p->left->getHeight(), p->right->getHeight()) + 1;
+      height = std::max(left->getHeight(), right->getHeight()) + 1;
+      p->height = std::max(p->left->getHeight(), p->right->getHeight()) + 1;
       return p;
     }
 
@@ -35,8 +36,8 @@ template<class T> class avl {
       Node* p = left;
       left = p->right;
       p->right = this;
-      height = max(left->getHeight(), right->getHeight()) + 1;
-      p->height = max(p->left->getHeight(), p->right->getHeight()) + 1;
+      height = std::max(left->getHeight(), right->getHeight()) + 1;
+      p->height = std::max(p->left->getHeight(), p->right->getHeight()) + 1;
       return p;
     }
 
@@ -50,27 +51,13 @@ template<class T> class avl {
       return rotateLeft();
     }
 
-    Node*& findMin() {
-      Node* p = this;
-      while (p->left->left)
-        p = p->left;
-      return p->left;
-    }
-
-    Node*& findMax() {
-      Node* p = this;
-      while (p->right->right)
-        p = p->right;
-      return p->right;
-    }
-
     Node* insertNode(const T& __key) {
       if (!this) return new Node(__key);
       else if (__key < key) left = left->insertNode(__key);
       else if (__key > key) right = right->insertNode(__key);
       else return this;
 
-      height = max(left->getHeight(), right->getHeight()) + 1;
+      height = std::max(left->getHeight(), right->getHeight()) + 1;
       int bf = getBalanceFactor();
 
       if (getBalanceFactor() > 1) {
@@ -88,17 +75,19 @@ template<class T> class avl {
       else if (__key < key) left = left->removeNode(__key);
       else if (__key > key) right = right->removeNode(__key);
       else if (left && right) {
-        Node *&p = right->findMin();
-        key = p->key;
-        free(p), p = NULL;
+        Node** p = &right;
+        while ((**p).left)
+          p = &(**p).left;
+        key = (**p).key;
+        free(*p), *p = NULL;
         return this;
       } else if (left != right) {
-        Node *p = left ? left : right;
+        Node* p = left ? left : right;
         *this = *p, free(p);
         return this;
       } else return NULL;
 
-      height = max(left->getHeight(), right->getHeight()) + 1;
+      height = std::max(left->getHeight(), right->getHeight()) + 1;
       if (getBalanceFactor() > 1) {
         if (__key < left->key) return rotateRight();
         else if (__key > left->key) return rotateLeftRight();
