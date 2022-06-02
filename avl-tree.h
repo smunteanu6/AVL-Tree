@@ -2,149 +2,234 @@
 /*
   MIT License
   Copyright (c) 2022 Ștefan Munteanu
+  https://github.com/smunteanu6/AVL-Tree/
 */
 
 #include <bits/stl_algobase.h>
 #include <cstddef>
 
-template<class T> class avl {
-  
-  struct Node {
-    T key;
-    Node* left;
-    Node* right;
-    int height;
+template<class Node> static constexpr int getHeight(Node* node) {
+  return node ? node->height : 0;
+}
 
-    constexpr const int getHeight() const {
-      return this ? height : 0;
+template<class Node> static constexpr int getBalanceFactor(Node* node) {
+  return getHeight(node->left) - getHeight(node->right);
+}
+
+template<class Node> static inline Node* rotateLeft(Node* node) {
+  Node* p = node->right;
+  node->right = p->left;
+  p->left = node;
+  node->height = std::max(getHeight(node->left), getHeight(node->right)) + 1;
+  p->height = std::max(getHeight(p->left), getHeight(p->right)) + 1;
+  return p;
+}
+
+template<class Node> static inline Node* rotateRight(Node* node) {
+  Node *p = node->left;
+  node->left = p->right;
+  p->right = node;
+  node->height = std::max(getHeight(node->left), getHeight(node->right)) + 1;
+  p->height = std::max(getHeight(p->left), getHeight(p->right)) + 1;
+  return p;
+}
+
+template<class Node, class Key> static inline Node* fixRotation(Node* node, const Key& key) {
+  node->height = std::max(getHeight(node->left), getHeight(node->right)) + 1;
+  int balanceFactor = getBalanceFactor(node);
+  if (balanceFactor > 1) {
+    if (key < node->left->key) {
+      return rotateRight(node);
+    } else if (key > node->left->key) {
+      node->left = rotateLeft(node->left);
+      return rotateRight(node);
     }
-
-    constexpr const int getBalanceFactor() const {
-      return this ? left->getHeight() - right->getHeight() : 0;
+  } else if (balanceFactor < -1) {
+    if (key > node->right->key) {
+      return rotateLeft(node);
+    } else if (key < node->right->key) {
+      node->right = rotateRight(node->right);
+      return rotateLeft(node);
     }
+  }
+  return node;
+}
 
-    Node* const rotateLeft() {
-      Node* p = right;
-      right = p->left;
-      p->left = this;
-      height = std::max(left->getHeight(), right->getHeight()) + 1;
-      p->height = std::max(p->left->getHeight(), p->right->getHeight()) + 1;
-      return p;
-    }
+template<class Node, class Key> static Node* findNode(Node* node, const Key& key) {
+  while (node) {
+    if (key < node->key) node = node->left;
+    else if (key > node->key) node = node->right;
+    else return node;
+  }
+  return NULL;
+}
 
-    Node* const rotateRight() {
-      Node* p = left;
-      left = p->right;
-      p->right = this;
-      height = std::max(left->getHeight(), right->getHeight()) + 1;
-      p->height = std::max(p->left->getHeight(), p->right->getHeight()) + 1;
-      return p;
-    }
+namespace avlset {
 
-    Node* const rotateLeftRight() {
-      left = left->rotateLeft();
-      return rotateRight();
-    }
+  template<class Node, class Key> static Node* insert(Node* node, const Key& key) {
+    if (!node) return new Node(key);
+    if (key == node->key) return node;
+    if (key < node->key) node->left = insert(node->left, key);
+    else node->right = insert(node->right, key);
+    return fixRotation(node, key);
+  }
 
-    Node* const rotateRightLeft() {
-      right = right->rotateRight();
-      return rotateLeft();
-    }
-
-    Node* insertNode(const T& __key) {
-      if (!this) return new Node(__key);
-      else if (__key < key) left = left->insertNode(__key);
-      else if (__key > key) right = right->insertNode(__key);
-      else return this;
-
-      height = std::max(left->getHeight(), right->getHeight()) + 1;
-      int bf = getBalanceFactor();
-
-      if (getBalanceFactor() > 1) {
-        if (__key < left->key) return rotateRight();
-        else if (__key > left->key) return rotateLeftRight();
-      } else if (getBalanceFactor() < -1) {
-        if (__key > right->key) return rotateLeft();
-        else if (__key < right->key) return rotateRightLeft();
-      }
-      return this;
-    }
-
-    Node* removeNode(const T& __key) {
-      if (!this) return NULL;
-      else if (__key < key) left = left->removeNode(__key);
-      else if (__key > key) right = right->removeNode(__key);
-      else if (left && right) {
-        Node** p = &right;
-        while ((**p).left)
-          p = &(**p).left;
-        key = (**p).key;
+  template<class Node, class Key> static Node* remove(Node* node, const Key& key) {
+    if (!node) return NULL;
+    if (key == node->key) {
+      if (node->left && node->right) {
+        Node** p = &node->right;
+        while ((**p).left) p = &(**p).left;
+        node->key = (**p).key;
         free(*p), *p = NULL;
-        return this;
-      } else if (left != right) {
-        Node* p = left ? left : right;
-        *this = *p, free(p);
-        return this;
-      } else return NULL;
-
-      height = std::max(left->getHeight(), right->getHeight()) + 1;
-      if (getBalanceFactor() > 1) {
-        if (__key < left->key) return rotateRight();
-        else if (__key > left->key) return rotateLeftRight();
-      } else if (getBalanceFactor() < -1) {
-        if (__key < right->key) return rotateLeft();
-        else if (__key > right->key) return rotateRightLeft();
+      } else if (node->left) {
+        Node* p = node->left;
+        *node = *p;
+        free(p);
+      } else if (node->right) {
+        Node* p = node->right;
+        *node = *p;
+        free(p);
+      } else {
+        free(node);
+        node = NULL;
       }
-      return this;
+      return node;
     }
 
-    template<typename F> void dfs(F callback) const {
-      if (!this) return;
-      left->dfs(callback);
-      callback(key);
-      right->dfs(callback);
+    if (key < node->key) node->left = remove(node->left);
+    else node->right = remove(node->right);
+    return fixRotation(node);
+
+  }
+}
+
+namespace avlmap {
+
+  template<class Node, class Key, class Value> static Node* insert(Node* node, const std::pair<Key,Value>& pair) {
+    if (!node) return new Node(pair);
+    if (pair.first == node->key) return node;
+    if (pair.first < node->key) node->left = insert(node->left, pair);
+    else node->right = insert(node->right, pair);
+    return fixRotation(node, pair.first);
+  }
+
+  template<class Node, class Key, class Value> static Node* remove(Node* node, const Key& key) {
+    if (!node) return NULL;
+    if (key == node->key) {
+      if (node->left && node->right) {
+        Node** p = &node->right;
+        while ((**p).left) p = &(**p).left;
+        node->key = (**p).key;
+        node->value = (**p).value;
+        free(*p), *p = NULL;
+      } else if (node->left) {
+        Node* p = node->left;
+        *node = *p;
+        free(p);
+      } else if (node->right) {
+        Node* p = node->right;
+        *node = *p;
+        free(p);
+      } else {
+        free(node);
+        node = NULL;
+      }
+      return node;
     }
 
-    Node(T __key) {
-      key = __key;
-      left = NULL;
-      right = NULL;
-      height = 1;
+    if (key < node->key) node->left = remove(node->left);
+    else node->right = remove(node->right);
+    return fixRotation(node);
+
+  }
+}
+
+namespace avl {
+
+  template<class Node, typename F> void dfs(const Node* node, F callback) {
+    if (!node) return;
+    dfs(node->left, callback);
+    callback(node);
+    dfs(node->right, callback);
+  }
+
+  template<class Key> class set {
+
+    struct Node {
+      Key key;
+      Node* left;
+      Node* right;
+      int height;
+
+      Node(const Key& key) {
+        this->key = key;
+        this->left = NULL;
+        this->right = NULL;
+        this->height = 1;
+      }
+
+    } *root = NULL;
+    size_t nodes = 0ull;
+
+    public:
+
+    inline void insert(const Key& key) {
+      this->root = avlset::insert(this->root, key);
     }
 
-  } *root = NULL;
+    inline void remove(const Key& key) {
+      this->root = avlset::remove(this->root, key);
+    }
 
-  size_t nodes_count = 0ull;
+    inline const Node* find(const Key& key) {
+      return findNode(this->root, key);
+    }
 
-  public:
+    inline const bool has(const Key& key) {
+      return findNode(this->root, key);
+    }
 
-  const bool empty() const {
-    return !nodes_count;
-  }
+  };
 
-  const size_t size() const {
-    return nodes_count;
-  }
+  template<class Key, class Value> class map {
 
-  void insert(T key) {
-    root = root->insertNode(key);
-  }
+    struct Node {
+      Key key;
+      Value value;
+      Node* left;
+      Node* right;
+      int height;
 
-  void remove(T key) {
-    root = root->removeNode(key);
-  }
+      Node(const std::pair<Key,Value>& pair) {
+        this->key = pair.first;
+        this->value = pair.second;
+        this->left = NULL;
+        this->right = NULL;
+        this->height = 1;
+      }
 
-  const Node* const find(T key) const {
-    const Node* node = root;
-    while (node)
-      if (key < node->key) node = node->left;
-      else if (key > node->key) node = node->right;
-      else return node;
-    return NULL;
-  }
+    } *root = NULL;
+    size_t nodes = 0ull;
 
-  template<typename F> void forEach(F callback) {
-    root->dfs(callback);
-  }
+    public:
 
-};
+    inline void insert(const std::pair<Key,Value>& pair) {
+      this->root = avlmap::insert(this->root, pair);
+    }
+
+    inline void remove(const Key& key) {
+      this->root = avlmap::remove(this->root, key);
+    }
+
+    inline const Node* find(const Key& key) {
+      return findNode(this->root, key);
+    }
+
+    inline Value& operator[](const Key& key) {
+      return findNode(this->root, key)->value;
+    }
+
+  };
+
+}
